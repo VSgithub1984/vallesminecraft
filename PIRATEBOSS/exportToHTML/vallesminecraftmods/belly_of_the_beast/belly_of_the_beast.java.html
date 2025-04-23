@@ -1,0 +1,44 @@
+<html>
+<head>
+<title>belly_of_the_beast.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #cf8e6d;}
+.s1 { color: #bcbec4;}
+.s2 { color: #bcbec4;}
+.s3 { color: #6aab73;}
+</style>
+</head>
+<body bgcolor="#1e1f22">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#606060" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+belly_of_the_beast.java</font>
+</center></td></tr></table>
+<pre><span class="s0">package </span><span class="s1">vallesminecraftmods</span><span class="s2">.</span><span class="s1">belly_of_the_beast</span><span class="s2">;</span>
+
+
+<span class="s0">import </span><span class="s1">Entity</span><span class="s2">.</span><span class="s1">SunkenSailorEntity</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">Entity</span><span class="s2">.</span><span class="s1">SunkenSailorGeoModel</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">net</span><span class="s2">.</span><span class="s1">minecraft</span><span class="s2">.</span><span class="s1">client</span><span class="s2">.</span><span class="s1">renderer</span><span class="s2">.</span><span class="s1">entity</span><span class="s2">.</span><span class="s1">EntityRendererProvider</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">net</span><span class="s2">.</span><span class="s1">minecraftforge</span><span class="s2">.</span><span class="s1">fml</span><span class="s2">.</span><span class="s1">common</span><span class="s2">.</span><span class="s1">Mod</span><span class="s2">;</span>
+<span class="s0">import </span><span class="s1">vallesminecraftmods</span><span class="s2">.</span><span class="s1">belly_of_the_beast</span><span class="s2">.</span><span class="s1">init</span><span class="s2">.</span><span class="s1">EntityInit</span><span class="s2">;</span>
+
+<span class="s1">@Mod</span><span class="s2">(</span><span class="s1">belly_of_the_beast</span><span class="s2">.</span><span class="s1">MODID</span><span class="s2">)</span>
+<span class="s0">public class </span><span class="s1">belly_of_the_beast </span><span class="s2">{</span>
+    <span class="s0">public static final </span><span class="s1">String MODID </span><span class="s2">= </span><span class="s3">&quot;belly_of_the_beast&quot;</span><span class="s2">;</span>
+
+    <span class="s0">public </span><span class="s1">belly_of_the_beast</span><span class="s2">(){</span>
+        <span class="s1">EntityInit</span><span class="s2">.</span><span class="s1">Entities</span><span class="s2">.</span><span class="s1">register</span><span class="s2">(</span><span class="s1">bus</span><span class="s2">);</span>
+
+    <span class="s2">}</span>
+    <span class="s0">public class </span><span class="s1">SunkenSailorRenderer </span><span class="s0">extends </span><span class="s1">GeoEntityRenderer</span><span class="s2">&lt;</span><span class="s1">SunkenSailorEntity</span><span class="s2">&gt; {</span>
+        <span class="s0">public </span><span class="s1">SunkenSailorRenderer</span><span class="s2">(</span><span class="s1">EntityRendererProvider</span><span class="s2">.</span><span class="s1">Context renderManager</span><span class="s2">) {</span>
+            <span class="s0">super</span><span class="s2">(</span><span class="s1">renderManager</span><span class="s2">, </span><span class="s0">new </span><span class="s1">SunkenSailorGeoModel</span><span class="s2">());</span>
+        <span class="s2">}</span>
+    <span class="s2">}</span>
+
+<span class="s2">}</span>
+</pre>
+</body>
+</html>
