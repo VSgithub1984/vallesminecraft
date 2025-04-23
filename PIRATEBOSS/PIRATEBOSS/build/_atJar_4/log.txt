@@ -1,0 +1,7 @@
+Java Launcher: C:\Program Files\Eclipse Adoptium\jdk-17.0.13.11-hotspot\bin\java.exe
+Arguments: '--inJar, C:\Users\Valentin\.gradle\caches\forge_gradle\minecraft_user_repo\net\minecraftforge\forge\1.20.1-47.3.11\forge-1.20.1-47.3.11-injected.jar, --outJar, C:\Users\Valentin\.gradle\caches\forge_gradle\minecraft_user_repo\net\minecraftforge\forge\1.20.1-47.3.11_mapped_official_1.20.1\forge-1.20.1-47.3.11_mapped_official_1.20.1.jar, --logFile, accesstransform.log, --atFile, C:\Users\Valentin\Desktop\MEINE EIGENEN MODS\PIRATEBOSS\build\_atJar_4\parent_at.cfg'
+Classpath:
+ - C:\Users\Valentin\.gradle\caches\forge_gradle\maven_downloader\net\minecraftforge\accesstransformers\8.2.0\accesstransformers-8.2.0-fatjar.jar
+Working directory: C:\Users\Valentin\Desktop\MEINE EIGENEN MODS\PIRATEBOSS\build\_atJar_4
+Main class: net.minecraftforge.accesstransformer.TransformerProcessor
+====================================
