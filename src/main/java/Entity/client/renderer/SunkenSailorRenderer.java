@@ -5,7 +5,7 @@ import net.minecraft.client.renderer.entity.MobRenderer;
 import net.minecraft.resources.ResourceLocation;
 import vallesminecraftmods.belly_of_the_beast.BellyOfTheBeast;
 import vallesminecraftmods.belly_of_the_beast.client.model.SunkenSailorModel;
-import vallesminecraftmods.belly_of_the_beast.entity.SunkenSailorEntity;
+import Entity.custom.SunkenSailorEntity;
 
 public class SunkenSailorRenderer extends MobRenderer<SunkenSailorEntity, SunkenSailorModel> {
 

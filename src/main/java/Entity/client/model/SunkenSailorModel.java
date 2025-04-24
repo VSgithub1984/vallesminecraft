@@ -14,7 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth; // Für Mth.clamp etc.
 import vallesminecraftmods.belly_of_the_beast.BellyOfTheBeast;
 import vallesminecraftmods.belly_of_the_beast.client.animation.SunkenSailorAnimations; // Importiere deine Animationsklasse
-import vallesminecraftmods.belly_of_the_beast.entity.SunkenSailorEntity;
+import Entity.custom.SunkenSailorEntity;
 
 public class SunkenSailorModel extends HierarchicalModel<SunkenSailorEntity> { // Geändert!
 
