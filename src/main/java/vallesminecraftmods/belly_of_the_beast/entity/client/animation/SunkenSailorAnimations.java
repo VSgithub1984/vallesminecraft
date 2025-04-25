@@ -1,9 +1,11 @@
+package vallesminecraftmods.belly_of_the_beast.entity.client.animation;
+
 import net.minecraft.client.animation.AnimationChannel;
 import net.minecraft.client.animation.AnimationDefinition;
 import net.minecraft.client.animation.Keyframe;
 import net.minecraft.client.animation.KeyframeAnimations;
 
-public class pirateboss_convertedtoOBJAnimation {
+ public class SunkenSailorAnimations  {
     public static final AnimationDefinition screambeamattack = AnimationDefinition.Builder.withLength(8.25F)
             .addAnimation("head", new AnimationChannel(AnimationChannel.Targets.ROTATION,
                     new Keyframe(0.0F, KeyframeAnimations.degreeVec(-35.0F, -12.0F, 4.0F), AnimationChannel.Interpolations.CATMULLROM),

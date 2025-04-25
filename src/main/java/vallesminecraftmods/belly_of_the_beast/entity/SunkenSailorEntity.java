@@ -1,7 +1,6 @@
-package vallesminecraftmods.belly_of_the_beast.entity.SunkenSailorEntity;
+package vallesminecraftmods.belly_of_the_beast.entity; // Behalte das Paket, das du zuletzt verwendet hast
 
-// Vanilla/Forge Imports
-import net.minecraft.client.animation.AnimationState; // <<< NEU für Vanilla Animationen
+import net.minecraft.world.entity.AnimationState;; // <<< FIX 1: Fehlender Import hinzugefügt
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
@@ -13,89 +12,82 @@ import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
-import net.minecraft.world.damage source.DamageSource;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.control.LookControl;
 import net.minecraft.world.entity.ai.control.MoveControl;
-import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.ai.goal.Goal;
+import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
+import net.minecraft.world.entity.ai.goal.RandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
+import net.minecraft.world.entity.ai.navigation.PathNavigation; // <<< FIX 2: Import für fehlende Methode
+import net.minecraft.world.entity.ai.navigation.WaterBoundPathNavigation; // <<< FIX 2: Import für fehlende Methode
+import net.minecraft.world.entity.ai.util.RandomPos;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkHooks;
-// Import für EntityInit (ersetzt BellyOfTheBeastModEntities)
-import vallesminecraftmods.belly_of_the_beast.init.EntityInit;
-// Import für das Projektil (Pfad ggf. anpassen)
-// Annahme: Es liegt im selben Paket oder wird korrekt importiert
-import vallesminecraftmods.belly_of_the_beast.entity.SkeletonfishprojectileEntity;
+// Stelle sicher, dass diese Imports korrekt auf dein Projekt verweisen
 
-// Java Util Imports
 import java.util.EnumSet;
 
-// !!! Entferne alle GeckoLib Imports (software.bernie...) !!!
-
-public class SunkenSailorEntity extends Monster  {
+public class SunkenSailorEntity extends Monster {
 
     // --- Synced Data ---
-    // Entferne ANIMATION und TEXTURE, da sie GeckoLib-spezifisch waren
     public static final EntityDataAccessor<Boolean> IS_MOVING = SynchedEntityData.defineId(SunkenSailorEntity.class, EntityDataSerializers.BOOLEAN);
     public static final EntityDataAccessor<Boolean> TRACKING_PLAYER = SynchedEntityData.defineId(SunkenSailorEntity.class, EntityDataSerializers.BOOLEAN);
-    // NEU: Für Vanilla Animations-Trigger
     public static final EntityDataAccessor<Boolean> IS_ATTACKING = SynchedEntityData.defineId(SunkenSailorEntity.class, EntityDataSerializers.BOOLEAN);
 
-    // Entferne GeckoLib Felder
-    // private final AnimatableInstanceCache cache = ...;
-    // private static final RawAnimation WALK_ANIM = ...; etc.
-
-    // NEU: AnimationStates für Vanilla/Forge Animationen (Client-Side!)
+    // --- Animation States ---
     public final AnimationState idleAnimationState = new AnimationState();
     public final AnimationState walkAnimationState = new AnimationState();
     public final AnimationState attackAnimationState = new AnimationState();
     public final AnimationState hurtAnimationState = new AnimationState();
     // public final AnimationState deathAnimationState = new AnimationState(); // Optional
 
-    private static final boolean DEBUG_MODE = false; // Behalten für allgemeines Debugging
-    // DEBUG_ANIMATIONS kann für Vanilla-Animationen wiederverwendet werden
+    private static final boolean DEBUG_MODE = false;
     private static final boolean DEBUG_VANILLA_ANIMATIONS = true;
 
     private final ServerBossEvent bossInfo = new ServerBossEvent(this.getDisplayName(), ServerBossEvent.BossBarColor.PINK, ServerBossEvent.BossBarOverlay.PROGRESS);
 
-    // --- Server-Side State Variables (Bleiben erhalten) ---
+    // --- Server-Side State Variables ---
     private int attackCounter = 0;
-    private int animationTimer = 0; // Wird jetzt serverseitig genutzt, um IS_ATTACKING zu steuern
-    private boolean isRangedAttacking = false; // Serverseitiger Logik-Zustand
+    private int animationTimer = 0;
+    private boolean isRangedAttacking = false;
     private int projectileDelayTimer = 0;
     private boolean projectileFired = false;
     private Player targetPlayer = null;
     private BlockPos spawnPos;
 
-    // Entferne: public String animationprocedure = "empty";
-
     public SunkenSailorEntity(EntityType<? extends SunkenSailorEntity> type, Level world) {
         super(type, world);
+        // Verwende MoveControl und LookControl des Mobs
         this.moveControl = new MoveControl(this);
         this.lookControl = new LookControl(this);
-        this.navigation = createWaterNavigation(world);
+        // Navigation für Wassermobs initialisieren
+        this.navigation = createWaterNavigation(world); // <<< FIX 2: Methode wird jetzt gefunden
         this.setPathfindingMalus(BlockPathTypes.WATER, 0.0F);
         this.setPathfindingMalus(BlockPathTypes.WATER_BORDER, 0.0F);
         xpReward = 50;
         setNoAi(false);
-        setMaxUpStep(1.0f);
-        setPersistenceRequired();
-        // SpawnPos erst setzen, wenn die Entität zur Welt hinzugefügt wurde (oder im Konstruktor, wenn 'world' nicht null ist)
-        if (!world.isClientSide) {
-            // this.spawnPos = this.blockPosition(); // Sicherer in addAdditionalSaveData initialisieren, falls null
-        }
+        setMaxUpStep(1.0f); // Erlaubt das Bewegen über 1-Block hohe Stufen (im Wasser relevant?)
+        setPersistenceRequired(); // Verhindert Despawnen
+        // spawnPos wird sicher in tick() oder readAdditionalSaveData initialisiert
+    }
+
+    // <<< FIX 2: Fehlende Methode wieder hinzugefügt >>>
+    protected PathNavigation createWaterNavigation(Level pLevel) {
+        return new WaterBoundPathNavigation(this, pLevel);
     }
 
     @Override
@@ -103,14 +95,14 @@ public class SunkenSailorEntity extends Monster  {
         super.defineSynchedData();
         this.entityData.define(IS_MOVING, false);
         this.entityData.define(TRACKING_PLAYER, false);
-        this.entityData.define(IS_ATTACKING, false); // NEU registrieren
+        this.entityData.define(IS_ATTACKING, false);
     }
 
-    // --- IS_MOVING Accessors (Bleiben erhalten) ---
+    // --- IS_MOVING Accessors ---
     public void setMoving(boolean moving) {
         if (this.isMoving() != moving) {
             this.entityData.set(IS_MOVING, moving);
-            if (DEBUG_VANILLA_ANIMATIONS && level().isClientSide) { // Log nur Client-Side, wo es für Animation relevant ist
+            if (DEBUG_VANILLA_ANIMATIONS && level().isClientSide) {
                 System.out.println("CLIENT: Setting IS_MOVING to: " + moving);
             }
         }
@@ -119,18 +111,15 @@ public class SunkenSailorEntity extends Monster  {
         return this.entityData.get(IS_MOVING);
     }
 
-    // --- TEXTURE Accessors entfernen ---
-    // public void setTexture(String texture) { ... }
-    // public String getTexture() { ... }
-
+    // --- MobType & Sounds ---
     @Override public MobType getMobType() { return MobType.UNDEAD; }
-    @Override public SoundEvent getAmbientSound() { return SoundEvents.SKELETON_AMBIENT; }
-    @Override public SoundEvent getHurtSound(DamageSource ds) { return SoundEvents.SKELETON_HURT; }
-    @Override public SoundEvent getDeathSound() { return SoundEvents.SKELETON_DEATH; }
-    @Override protected SoundEvent getSwimSound() { return SoundEvents.PLAYER_SWIM; }
-    @Override protected SoundEvent getSwimSplashSound() { return SoundEvents.PLAYER_SPLASH; }
+    @Override public SoundEvent getAmbientSound() { return SoundEvents.SKELETON_AMBIENT; } // Beispiel
+    @Override public SoundEvent getHurtSound(DamageSource ds) { return SoundEvents.SKELETON_HURT; } // Beispiel
+    @Override public SoundEvent getDeathSound() { return SoundEvents.SKELETON_DEATH; } // Beispiel
+    @Override protected SoundEvent getSwimSound() { return SoundEvents.PLAYER_SWIM; } // Beispiel
+    @Override protected SoundEvent getSwimSplashSound() { return SoundEvents.PLAYER_SPLASH; } // Beispiel
 
-    // --- TRACKING_PLAYER Accessors (Bleiben erhalten) ---
+    // --- TRACKING_PLAYER Accessors ---
     public boolean isTrackingPlayer() {
         return this.entityData.get(TRACKING_PLAYER);
     }
@@ -140,29 +129,35 @@ public class SunkenSailorEntity extends Monster  {
 
     @Override
     public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        // Stellt sicher, dass die Entität korrekt gespawnt wird
         return NetworkHooks.getEntitySpawningPacket(this);
     }
 
+    // --- AI Goals ---
     @Override
     protected void registerGoals() {
-        super.registerGoals(); // Good practice to call super
-        // Goal priorities: Lower number = higher priority
-        this.goalSelector.addGoal(0, new EntityAICirclePlayer(this)); // Eigene AI behalten
-        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
-        this.goalSelector.addGoal(2, new RandomStrollGoal(this, 0.4D) { // Geschwindigkeit angepasst
+        super.registerGoals();
+        this.goalSelector.addGoal(0, new EntityAICirclePlayer(this));
+        this.goalSelector.addGoal(2, new RandomStrollGoal(this, 0.4D) {
+            // ... (Implementierung von RandomStrollGoal wie zuvor) ...
             @Override
             public Vec3 getPosition() {
                 // Initialisiere spawnPos sicher, falls noch nicht geschehen
-                if (SunkenSailorEntity.this.spawnPos == null) {
+                if (SunkenSailorEntity.this.spawnPos == null && !SunkenSailorEntity.this.level().isClientSide) {
                     SunkenSailorEntity.this.spawnPos = SunkenSailorEntity.this.blockPosition();
                 }
                 // Zufällige Position im Wasser nahe dem Spawn
                 if (SunkenSailorEntity.this.spawnPos != null) {
                     for(int i = 0; i < 10; ++i) { // Versuche 10 Mal, eine Wasserposition zu finden
-                        Vec3 randomOffset = RandomPos.generateRandomDirection(SunkenSailorEntity.this.random, 15, 7);
-                        Vec3 targetPos = SunkenSailorEntity.this.spawnPos.offset( (int)randomOffset.x, 0, (int)randomOffset.z).getCenter();
+                        BlockPos randomOffset = RandomPos.generateRandomDirection(SunkenSailorEntity.this.random, 15, 7);
+                        // Stelle sicher, dass die Höhe nicht zu stark abweicht, falls getWaterSurfaceY fehlschlägt
+                        Vec3 targetPos = SunkenSailorEntity.this.spawnPos.offset((int) randomOffset.getX(), 0 , (int) randomOffset.getZ()).getCenter();
                         double targetY = SunkenSailorEntity.this.getWaterSurfaceY(targetPos.x, targetPos.z);
+
+                        // Wenn getWaterSurfaceY keinen sinnvollen Wert liefert (z.B. weit weg von Wasser), nutze eine Fallback-Höhe
+                        if (targetY <= SunkenSailorEntity.this.level().getMinBuildHeight()) {
+                            targetY = SunkenSailorEntity.this.getY(); // Bleibe auf aktueller Höhe als Fallback
+                        }
+
                         BlockPos checkPos = BlockPos.containing(targetPos.x, targetY - 0.1, targetPos.z); // Knapp unter der Oberfläche prüfen
                         if (SunkenSailorEntity.this.level().getFluidState(checkPos).is(FluidTags.WATER)) {
                             return new Vec3(targetPos.x, targetY - 0.5, targetPos.z); // Leicht unter der Oberfläche bleiben
@@ -170,36 +165,35 @@ public class SunkenSailorEntity extends Monster  {
                     }
                 }
                 // Fallback, falls keine gute Position gefunden wurde
-                return super.getPosition(); // Oder null zurückgeben, damit das Goal pausiert?
+                return super.getPosition();
             }
             @Override
             public boolean canUse() {
-                // Kann nur verwendet werden, wenn nicht angegriffen wird, kein Ziel hat und im Wasser ist
                 return !SunkenSailorEntity.this.isRangedAttacking &&
                         SunkenSailorEntity.this.getTarget() == null &&
-                        super.canUse() && // Vanilla Checks für RandomStrollGoal
-                        SunkenSailorEntity.this.isInWaterOrBubble(); // Einfacher Wasser-Check
+                        super.canUse() &&
+                        SunkenSailorEntity.this.isInWaterOrBubble();
             }
             @Override
             public void start() {
                 super.start();
-                SunkenSailorEntity.this.setMoving(true); // Setzt Synced Data für Animation
+                SunkenSailorEntity.this.setMoving(true);
             }
             @Override
             public void stop() {
                 super.stop();
-                SunkenSailorEntity.this.setMoving(false); // Setzt Synced Data für Animation
+                SunkenSailorEntity.this.setMoving(false);
             }
         });
-
-        this.goalSelector.addGoal(4, new RandomLookAroundGoal(this)); // Look around when idle
-        this.targetSelector.addGoal(1, new HurtByTargetGoal(this)); // Target whatever hurt it
+        this.goalSelector.addGoal(4, new RandomLookAroundGoal(this));
+        this.targetSelector.addGoal(1, new HurtByTargetGoal(this));
+        this.targetSelector.addGoal(2, new NearestAttackableTargetGoal<>(this, Player.class, true));
     }
 
+    // --- NBT Daten ---
     @Override
     public void addAdditionalSaveData(CompoundTag compound) {
         super.addAdditionalSaveData(compound);
-        // Speichere Server-Zustände
         compound.putInt("AttackCounter", this.attackCounter);
         compound.putBoolean("IsRangedAttacking", this.isRangedAttacking);
         compound.putInt("AnimationTimer", this.animationTimer);
@@ -210,15 +204,11 @@ public class SunkenSailorEntity extends Monster  {
             compound.putInt("SpawnPosY", this.spawnPos.getY());
             compound.putInt("SpawnPosZ", this.spawnPos.getZ());
         }
-        // Synced Data wird normalerweise nicht manuell gespeichert, außer zur Sicherheit
-        // compound.putBoolean("IsMovingData", this.isMoving());
-        // compound.putBoolean("IsAttackingData", this.entityData.get(IS_ATTACKING));
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag compound) {
         super.readAdditionalSaveData(compound);
-        // Lade Server-Zustände
         if (compound.contains("AttackCounter")) this.attackCounter = compound.getInt("AttackCounter");
         if (compound.contains("IsRangedAttacking")) this.isRangedAttacking = compound.getBoolean("IsRangedAttacking");
         if (compound.contains("AnimationTimer")) this.animationTimer = compound.getInt("AnimationTimer");
@@ -227,19 +217,15 @@ public class SunkenSailorEntity extends Monster  {
         if (compound.contains("SpawnPosX")) {
             this.spawnPos = new BlockPos(compound.getInt("SpawnPosX"), compound.getInt("SpawnPosY"), compound.getInt("SpawnPosZ"));
         }
-        // Synced Data wird normalerweise automatisch wiederhergestellt
     }
 
-    // Entferne setAnimation / getSyncedAnimation
-
+    // --- Ticks ---
     @Override
     public void tick() {
         super.tick();
-        // Initialisiere spawnPos sicher nach dem ersten Tick, falls noch nicht geschehen
         if (this.spawnPos == null && !this.level().isClientSide && this.tickCount > 1) {
             this.spawnPos = this.blockPosition();
         }
-        // Clientseitige Animationslogik
         if (this.level().isClientSide()) {
             this.updateAnimationStates();
         }
@@ -248,122 +234,100 @@ public class SunkenSailorEntity extends Monster  {
     @Override
     public void baseTick() {
         super.baseTick();
-        // Serverseitige Logik
         if (!this.level().isClientSide) {
-            // Target Player Update
+            // Target Update
             LivingEntity currentTarget = this.getTarget();
-            if (currentTarget instanceof Player) {
-                this.targetPlayer = (Player) currentTarget;
+            if (currentTarget instanceof Player player) { // Verwende instanceof mit Pattern Matching
+                this.targetPlayer = player;
             } else {
                 this.targetPlayer = null;
             }
 
-            // Handle ranged attack timers and state
+            // Attack Timer Logic
             if (this.isRangedAttacking) {
-                // Projectile Delay Timer
                 if (projectileDelayTimer > 0) {
                     projectileDelayTimer--;
                     if (projectileDelayTimer == 0 && !projectileFired && this.targetPlayer != null) {
-                        // Prüfe Sichtlinie direkt vor dem Feuern
                         if (this.hasLineOfSight(this.targetPlayer)) {
                             fireProjectiles(this.targetPlayer);
-                            projectileFired = true; // Nur setzen, wenn wirklich gefeuert wurde
+                            projectileFired = true;
                         } else {
-                            // Sichtlinie verloren, Angriff abbrechen? Oder warten?
-                            // Hier: Angriff abbrechen, Timer läuft trotzdem ab.
-                            projectileFired = true; // Verhindert erneutes Feuern in diesem Zyklus
+                            projectileFired = true; // Verhindere erneutes Feuern ohne Sichtlinie
                         }
                     }
                 }
 
-                // Animation/State Timer
                 if (animationTimer > 0) {
                     animationTimer--;
                     if (animationTimer == 0) {
-                        // Wenn der serverseitige Timer abläuft:
-                        this.isRangedAttacking = false; // Logik-Zustand zurücksetzen
-                        this.projectileFired = false;   // Bereit für nächsten Schuss-Check
-                        this.entityData.set(IS_ATTACKING, false); // Client über Ende informieren
+                        this.isRangedAttacking = false;
+                        this.projectileFired = false;
+                        this.entityData.set(IS_ATTACKING, false);
                     }
                 }
             } else {
-                // Stelle sicher, dass IS_ATTACKING false ist, wenn nicht isRangedAttacking
-                // (Sollte durch Timer-Ablauf geschehen, aber zur Sicherheit)
                 if(this.entityData.get(IS_ATTACKING)) {
                     this.entityData.set(IS_ATTACKING, false);
                 }
             }
 
-
-            // Vertical positioning in water (Beibehalten)
-            if (this.isInWaterOrBubble()) { // Sicherer Check
+            // Water Positioning
+            if (this.isInWaterOrBubble()) {
                 double waterSurfaceY = getWaterSurfaceY(this.getX(), this.getZ());
-                double targetY = waterSurfaceY - 0.5; // Leicht untergetaucht bleiben
+                double targetY = waterSurfaceY - 0.5;
                 Vec3 currentDelta = this.getDeltaMovement();
                 double dy;
-                // Wenn wir uns nicht aktiv bewegen oder nah am Ziel sind, sanfter anpassen
-                if (!this.getNavigation().isInProgress() || this.distanceToSqr(this.getNavigation().getTargetPos().x, this.getNavigation().getTargetPos().y, this.getNavigation().getTargetPos().z) < 4.0) {
-                    dy = Mth.clamp((targetY - this.getY()) * 0.1, -0.2, 0.2); // Langsamere Anpassung
+                boolean nearTarget = !this.getNavigation().isInProgress() || (this.getNavigation().getTargetPos() != null && this.position().distanceToSqr(this.getNavigation().getTargetPos().getCenter()) < 4.0);
+
+                if (nearTarget) {
+                    dy = Mth.clamp((targetY - this.getY()) * 0.1, -0.2, 0.2);
                 } else {
-                    // Wenn wir auf dem Weg sind, etwas stärker anpassen
                     dy = Mth.clamp((targetY - this.getY()) * 0.15, -0.3, 0.3);
                 }
 
-                // Nur anwenden, wenn die vertikale Bewegung nicht schon zu stark ist
                 if (Math.abs(currentDelta.y) < 0.3) {
                     this.setDeltaMovement(currentDelta.x, currentDelta.y + dy, currentDelta.z);
                 } else {
-                    // Wenn schon schnell auf/ab, Bewegung leicht dämpfen und Ziel-Y berücksichtigen
                     this.setDeltaMovement(currentDelta.x, currentDelta.y * 0.9 + dy * 0.1, currentDelta.z);
                 }
             } else {
-                // Apply gravity if out of water
-                if (!this.onGround() && !this.getAbilities().flying) { // Abilities Check hinzufügen
-                    this.setDeltaMovement(this.getDeltaMovement().add(0, -0.04 * this.getGravity(), 0)); // Gravity berücksichtigen
+                // Gravity outside water
+                if (!this.onGround() && !this.isNoGravity()) { // Prüfe isNoGravity()
+                    // Verwende die korrekte Methode für Gravitation
+                    this.setDeltaMovement(this.getDeltaMovement().add(0.0D, -this.getGravity(), 0.0D));
                 }
             }
         }
     }
 
-    // Clientseitige Methode zum Steuern der AnimationStates
+    // --- Animation State Logic (Client-Side) ---
     private void updateAnimationStates() {
         boolean isClientAttacking = this.entityData.get(IS_ATTACKING);
-        boolean isClientMoving = this.isMoving(); // Liest IS_MOVING synced data
-
-        // Hurt Animation hat Priorität (oder Tod)
-        // Vanilla nutzt hurtTime und deathTime
+        boolean isClientMoving = this.isMoving();
         boolean isHurt = this.hurtTime > 0;
-        boolean isDead = this.isDeadOrDying(); // oder this.deathTime > 0
+        boolean isDead = this.isDeadOrDying();
 
-        if (isHurt || isDead) { // Hurt oder Tod Animation
-            // Stoppe andere Hauptanimationen
+        if (isHurt || isDead) {
             this.idleAnimationState.stop();
             this.walkAnimationState.stop();
             this.attackAnimationState.stop();
-            // Starte Hurt-Animation (oder Todesanimation, falls definiert und isDead)
             this.hurtAnimationState.startIfStopped(this.tickCount);
-            // if (isDead) { /* deathAnimationState.startIfStopped(...) */ } else { hurtAnimationState.startIfStopped(...); }
+            // if (isDead) { /* deathAnimationState.startIfStopped(...) */ }
         } else {
-            // Stoppe Hurt/Death-Animation, wenn nicht mehr relevant
             if (this.hurtAnimationState.isStarted()) {
                 this.hurtAnimationState.stop();
             }
             // if (this.deathAnimationState.isStarted()) { ... }
 
-            // Handle Attack-Animation
             if (isClientAttacking) {
-                // Stoppe Idle/Walk
                 this.idleAnimationState.stop();
                 this.walkAnimationState.stop();
-                // Starte Attack
                 this.attackAnimationState.startIfStopped(this.tickCount);
             } else {
-                // Stoppe Attack, wenn nicht mehr angreifend
                 if (this.attackAnimationState.isStarted()) {
                     this.attackAnimationState.stop();
                 }
 
-                // Handle Idle/Walk nur, wenn nicht angegriffen wird UND nicht verletzt/tot ist
                 if (isClientMoving) {
                     this.idleAnimationState.stop();
                     this.walkAnimationState.startIfStopped(this.tickCount);
@@ -375,179 +339,157 @@ public class SunkenSailorEntity extends Monster  {
         }
     }
 
-    // Dimensionen an das neue Modell anpassen!
-    // Die alten 5.0F, 8.0F sind viel zu groß für ein normales Modell.
+    // --- Dimensionen & Boss Bar ---
     @Override public EntityDimensions getDimensions(Pose pose) {
-        // Passe dies an die Größe deines Models/Hitbox an!
-        // Beispiel: return EntityDimensions.scalable(1.5F, 2.5F);
-        return EntityDimensions.scalable(1.5F, 2.5F); // Platzhalter, anpassen!
+        return EntityDimensions.scalable(1.5F, 2.5F); // ANPASSEN!
     }
-    // canChangeDimensions ist für skalierbare Dimensionen wichtig
-    @Override public boolean canChangeDimensions() { return false; } // Oder true, je nach Bedarf
-
-    // Boss Bar Logik (Bleibt erhalten)
+    @Override public boolean canChangeDimensions() { return false; }
     @Override public void startSeenByPlayer(ServerPlayer player) { super.startSeenByPlayer(player); this.bossInfo.addPlayer(player); }
     @Override public void stopSeenByPlayer(ServerPlayer player) { super.stopSeenByPlayer(player); this.bossInfo.removePlayer(player); }
     @Override public void customServerAiStep() {
         super.customServerAiStep();
-        // Boss Info nur auf dem Server aktualisieren
         if (!this.level().isClientSide) {
             this.bossInfo.setProgress(this.getHealth() / this.getMaxHealth());
         }
     }
 
+    // --- Attribute ---
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
-                .add(Attributes.MOVEMENT_SPEED, 0.4D) // Angepasst
+                .add(Attributes.MOVEMENT_SPEED, 0.4D)
                 .add(Attributes.MAX_HEALTH, 200)
                 .add(Attributes.ARMOR, 10)
-                .add(Attributes.ATTACK_DAMAGE, 15) // Basis für Projektile
+                .add(Attributes.ATTACK_DAMAGE, 15)
                 .add(Attributes.FOLLOW_RANGE, 64)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 0.8);
     }
 
-    // Diese Methode gehört eher in EntityInit, wird hier aber der Vollständigkeit halber belassen
-    @Deprecated // Markiere als veraltet, um Umzug zu signalisieren
-    public static void init() {
-        // Sollte durch EntityInit.registerSpawnPlacements() ersetzt werden,
-        // das von der Main Mod Klasse aufgerufen wird.
-        SpawnPlacements.register(EntityInit.SUNKEN_SAILOR.get(), // Korrekte Referenz
-                SpawnPlacements.Type.IN_WATER,
-                Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, // Oder OCEAN_FLOOR?
-                Monster::checkMonsterSpawnRules);
-    }
+    // --- Spawning ---
+    // Die init() Methode ist veraltet und sollte entfernt werden.
+    // Die Registrierung erfolgt in EntityInit.registerSpawnPlacements().
+    // @Deprecated
+    // public static void init() { ... }
     @Override public boolean checkSpawnObstruction(LevelReader pLevelReader) { return pLevelReader.isUnobstructed(this); }
 
-    // Entferne GeckoLib Animation Setup
-    // @Override public void registerControllers(...) { ... }
-    // @Override public AnimatableInstanceCache getAnimatableInstanceCache() { ... }
 
-    // getWaterSurfaceY (Bleibt erhalten)
+    // --- Wasser-Navigation ---
+    @Override
+    public void travel(Vec3 travelVector) {
+        if (this.isEffectiveAi() && this.isInWater()) {
+            this.moveRelative(this.getSpeed(), travelVector); // Passe getSpeed() an Wasser an, falls nötig
+            this.move(MoverType.SELF, this.getDeltaMovement());
+            // Wasserbewegung etwas dämpfen
+            this.setDeltaMovement(this.getDeltaMovement().scale(0.9D));
+        } else {
+            super.travel(travelVector);
+        }
+    }
+    // Vanilla Methode für Wasser-Bewegungsgeschwindigkeit
+    @Override
+    public float getWaterSlowDown() {
+        return 0.9f; // Standard ist 0.8F, etwas schneller im Wasser
+    }
+
+    // --- Wasser Oberflächen Höhe ---
     private double getWaterSurfaceY(double x, double z) {
         Level level = this.level();
         int ix = Mth.floor(x);
         int iz = Mth.floor(z);
-        int iy = Mth.floor(this.getY(1.0)); // Suche etwas höher starten?
+        int iy = Mth.floor(this.getY(1.0)); // Start Y
 
-        // Suche abwärts nach Wasser
+        // Suche abwärts
         for (int y = iy; y >= level.getMinBuildHeight(); --y) {
             BlockPos pos = new BlockPos(ix, y, iz);
             BlockState state = level.getBlockState(pos);
             if (state.getFluidState().is(FluidTags.WATER)) {
-                // Nutze die genaue Höhe der Flüssigkeitsoberfläche
                 return (double)y + state.getFluidState().getHeight(level, pos);
             }
-            // Stoppe, wenn fester Block ohne Wasser gefunden wurde
             if (!state.isAir() && !state.canBeReplaced() && !state.getFluidState().is(FluidTags.WATER)) {
                 break;
             }
         }
-        // Suche aufwärts, falls darunter kein Wasser war
+        // Suche aufwärts
         for (int y = iy + 1; y <= level.getMaxBuildHeight(); ++y) {
             BlockPos pos = new BlockPos(ix, y, iz);
             BlockState state = level.getBlockState(pos);
             if (state.getFluidState().is(FluidTags.WATER)) {
                 return (double)y + state.getFluidState().getHeight(level, pos);
             }
-            // Stoppe bei festem Block
             if (!state.isAir() && !state.canBeReplaced()) {
                 break;
             }
         }
-
-        // Fallback: Meeresspiegel oder aktuelle Y-Position? Meeresspiegel ist sicherer.
-        return level.getSeaLevel();
+        return level.getSeaLevel(); // Fallback
     }
 
-    // --- Attack Methods (Angepasst für Vanilla Animation Trigger) ---
+    // --- Angriffslogik ---
     public void performRangedAttack(LivingEntity target) {
-        // Nur auf dem Server ausführen
         if (this.isRangedAttacking || this.level().isClientSide) return;
 
-        this.isRangedAttacking = true; // Server-Zustand setzen
-        this.entityData.set(IS_ATTACKING, true); // Client über Synced Data informieren
-        this.setMoving(false); // Bewegung stoppen (informiert Client über IS_MOVING)
-        this.getNavigation().stop(); // Navigation stoppen
+        this.isRangedAttacking = true;
+        this.entityData.set(IS_ATTACKING, true);
+        this.setMoving(false);
+        this.getNavigation().stop();
 
-        if (target instanceof Player) {
-            this.targetPlayer = (Player) target;
+        if (target instanceof Player player) {
+            this.targetPlayer = player;
         } else {
             this.targetPlayer = null;
         }
 
-        // Entferne: this.setAnimation("realrangedattackanimation");
-        this.animationTimer = 92; // Server-Timer für die *Dauer* des Angriffs-Zustands
-        this.projectileDelayTimer = 60; // Wann das Projektil abgefeuert wird
-        this.projectileFired = false; // Zurücksetzen für diesen Angriff
+        this.animationTimer = 92; // Dauer des AngriffsZUSTANDS (nicht unbedingt der Animation)
+        this.projectileDelayTimer = 60; // Verzögerung bis zum Schuss
+        this.projectileFired = false;
     }
 
-    // fireProjectiles (Bleibt erhalten, Pfad zum Projektil anpassen)
     private void fireProjectiles(LivingEntity target) {
         Level level = this.level();
-        if (level.isClientSide || target == null) return; // Sicherheitscheck
+        if (level.isClientSide || target == null) return;
 
         if (DEBUG_VANILLA_ANIMATIONS) {
             System.out.println("SERVER: fireProjectiles CALLED (Attack " + (attackCounter % 2 == 0 ? "1 - Single" : "2 - Triple") + ")");
         }
 
-        Vec3 spawnPos = this.position().add(0, this.getBbHeight() * 0.6, 0); // Spawnposition relativ zur Entitätshöhe
-
-        // Aiming
-        double dx = target.getX() - spawnPos.x;
-        // Ziele auf die Mitte der Hitbox des Ziels
-        double dy = target.getY() + target.getEyeHeight() * 0.5 - spawnPos.y;
-        double dz = target.getZ() - spawnPos.z;
+        Vec3 spawnPos = this.position().add(0, this.getBbHeight() * 0.7, 0);
+        double targetX = target.getX();
+        double targetY = target.getY() + target.getEyeHeight() * 0.5;
+        double targetZ = target.getZ();
 
         if (attackCounter % 2 == 0) {
-            // Attack 1: Single Projectile
-            level.playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.SKELETON_SHOOT, net.minecraft.sounds.SoundSource.HOSTILE, 1.5F, 0.8F);
-
-            // Annahme: SkeletonfishprojectileEntity existiert und ist korrekt registriert
-            // Passe den Namespace und Pfad ggf. an
-            SkeletonfishprojectileEntity projectile = new SkeletonfishprojectileEntity(
-                    /* Ersetze dies durch deine Projektil-EntityType-Referenz, z.B. EntityInit.SKELETONFISH_PROJECTILE.get() */
-                    null, // PLATZHALTER - ERSETZEN!
-                    level);
-            projectile.setPos(spawnPos.x, spawnPos.y, spawnPos.z); // Position setzen
-            projectile.setOwner(this); // Wichtig für Schaden etc.
-            projectile.shoot(dx, dy, dz, 1.1f, 1.0f); // Geschwindigkeit, Ungenauigkeit
-
-            // Schaden und Knockback am Projektil setzen (falls das Projektil Methoden dafür hat)
-            // projectile.setBaseDamage(12);
-            // projectile.setKnockback(8);
+            // Attack 1: Tracking
+            level.playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.SKELETON_SHOOT, SoundSource.HOSTILE, 1.5F, 0.8F);
+            SkeletonfishprojectileEntity projectile = new SkeletonfishprojectileEntity(level, this, (byte) 1, target);
+            projectile.setPos(spawnPos);
+            double dx = targetX - spawnPos.x;
+            double dy = targetY - spawnPos.y;
+            double dz = targetZ - spawnPos.z;
+            projectile.shoot(dx, dy, dz, 1.1f, 1.0f);
+            projectile.setProjectileDamage(0); // Schaden durch Explosion
+            projectile.setProjectileKnockback(0);
             level.addFreshEntity(projectile);
-
         } else {
-            // Attack 2: Triple Projectile
-            level.playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.GHAST_SHOOT, net.minecraft.sounds.SoundSource.HOSTILE, 1.5F, 0.6F);
+            // Attack 2: Ghast-like
+            level.playSound(null, this.getX(), this.getY(), this.getZ(), SoundEvents.GHAST_SHOOT, SoundSource.HOSTILE, 1.5F, 0.6F);
+            Vec3 ghastSpawnPos = this.position().add(0, this.getBbHeight() + 0.5, 0);
+            Vec3 aimDir = new Vec3(targetX - ghastSpawnPos.x, targetY - ghastSpawnPos.y, targetZ - ghastSpawnPos.z).normalize();
+            Vec3 sideOffset = new Vec3(-aimDir.z, 0, aimDir.x).normalize().scale(0.8);
+            Vec3[] offsets = { sideOffset.scale(-1), Vec3.ZERO, sideOffset };
 
-            Vec3 aimDir = new Vec3(dx, dy, dz).normalize();
-            // Berechne seitlichen Vektor für Streuung
-            Vec3 sideVec = new Vec3(-aimDir.z, 0, aimDir.x).normalize().scale(0.5); // Kleinerer Offset für Streuung
-
-            for (int i = -1; i <= 1; ++i) {
-                Vec3 spreadDir = aimDir.add(sideVec.scale(i)).normalize(); // Richtung leicht anpassen
-
-                SkeletonfishprojectileEntity projectile = new SkeletonfishprojectileEntity(
-                        /* Ersetze dies durch deine Projektil-EntityType-Referenz */
-                        null, // PLATZHALTER - ERSETZEN!
-                        level);
-                projectile.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
-                projectile.setOwner(this);
-                // Schieße mit leicht angepasster Richtung
-                projectile.shoot(spreadDir.x, spreadDir.y, spreadDir.z, 1.0f, 4.0f);
-
-                // projectile.setBaseDamage(8);
-                // projectile.setKnockback(5);
+            for (Vec3 offset : offsets) {
+                Vec3 actualSpawnPos = ghastSpawnPos.add(offset);
+                SkeletonfishprojectileEntity projectile = new SkeletonfishprojectileEntity(level, this, (byte) 2, null);
+                projectile.setPos(actualSpawnPos);
+                projectile.shoot(aimDir.x, aimDir.y, aimDir.z, 1.0f, 2.0f);
+                projectile.setProjectileDamage(0); // Schaden durch Explosion
+                projectile.setProjectileKnockback(0);
                 level.addFreshEntity(projectile);
             }
         }
-
         this.attackCounter++;
     }
 
-    // --- Custom AI Goal (EntityAICirclePlayer, bleibt erhalten) ---
-    // Keine Änderungen hier notwendig, da es `isRangedAttacking` und `performRangedAttack` nutzt.
+    // --- Custom AI Goal ---
+    // (EntityAICirclePlayer Klasse wie zuvor, keine Änderungen notwendig)
     public static class EntityAICirclePlayer extends Goal {
         private final SunkenSailorEntity entity;
         private Player targetPlayer;
@@ -577,10 +519,10 @@ public class SunkenSailorEntity extends Monster  {
                 return false;
             }
             LivingEntity target = entity.getTarget();
-            if (target instanceof Player && target.isAlive()) {
+            if (target instanceof Player player && target.isAlive()) { // Pattern Matching verwenden
                 // Prüfe Distanz innerhalb der Follow-Range
                 if (entity.distanceToSqr(target) < entity.getAttributeValue(Attributes.FOLLOW_RANGE) * entity.getAttributeValue(Attributes.FOLLOW_RANGE)) {
-                    this.targetPlayer = (Player) target;
+                    this.targetPlayer = player;
                     return true;
                 }
             }
@@ -607,7 +549,7 @@ public class SunkenSailorEntity extends Monster  {
             this.stuckTicks = 0;
             this.lastPos = entity.position();
             this.tryingToReachWater = false;
-            entity.setMoving(true); // Starte mit Bewegung
+            // setMoving wird durch die Navigation ausgelöst
         }
 
         @Override
@@ -734,9 +676,14 @@ public class SunkenSailorEntity extends Monster  {
             }
 
             // Update moving state basierend auf tatsächlicher Bewegung
-            Vec3 delta = entity.getDeltaMovement();
-            double horizSpeedSqr = delta.x * delta.x + delta.z * delta.z;
-            entity.setMoving(horizSpeedSqr > 0.001); // Bewegt sich, wenn horizontale Geschwindigkeit > 0
+            entity.setMoving(entity.getNavigation().isInProgress() && !entity.getNavigation().isDone()); // Setze Moving, wenn Navigation aktiv ist
+
         }
     } // Ende EntityAICirclePlayer
+
+    // Methode zum Berechnen der Schwerkraft (wird von baseTick verwendet)
+    protected double getGravity() {
+        // Standard-Schwerkraft, kann überschrieben werden, wenn die Entität leichter/schwerer sein soll
+        return 0.08D; // Vanilla default für die meisten Entities
+    }
 } // Ende SunkenSailorEntity

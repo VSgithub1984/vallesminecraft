@@ -109,7 +109,7 @@
  - 47.1.27 Add LivingSwapHandItemsEvent
  - 47.1.26 Fixed FluidUtil#tryFillContainer returning invalid result when simulating #9358
  - 47.1.25 Re-add in-game mod menu (#9652)
- - 47.1.24 Fix Entity eye height for multipart entities.
+ - 47.1.24 Fix vallesminecraftmods.vallesminecraftmods.BellyOfTheBeast.entity eye height for multipart entities.
  - 47.1.23 Fix conflicting keybindings not having the correct click count set. #9360
  - 47.1.22 Fix the Emissive Rendering for Experimental Light Pipeline (#9651)
  - 47.1.21 Fixed AdvancementsScreen.java.patch buttons not rendering (#9649)
@@ -270,7 +270,7 @@
  - 45.0.41 Fix dummy air blocks not being marked as air (#9440)
  - 45.0.40 Add support for splitting the login packet (#9367)
            It contains full copies of data registries and can easily surpass vanilla's limits
- - 45.0.39 Remove Attack Range and Reach Distance and add Block Reach and Entity Reach (#9361)
+ - 45.0.39 Remove Attack Range and Reach Distance and add Block Reach and vallesminecraftmods.vallesminecraftmods.BellyOfTheBeast.entity Reach (#9361)
  - 45.0.38 Add default bucket sounds for milk (#9432)
  - 45.0.37 Deprecate Item.onUsingTick, as vanilla provides the same function in Item.onUseTick now. Closes #9342
  - 45.0.36 Fix ScreenEvent.Init.[Pre/Post] not working correctly (#9431)
@@ -930,7 +930,7 @@
  - 41.0.14  Update forgeSPI to v5 (#8696)
  - 41.0.13  Make IVertexConsumers such as the lighting pipeline, be aware of which format they are dealing with. (#8692)
             Also fix Lighting pipeline ignoring the overlay coords from the block renderer.
- - 41.0.12  Fixed misaligned patch to invalidateCaps in Entity (#8705)
+ - 41.0.12  Fixed misaligned patch to invalidateCaps in vallesminecraftmods.vallesminecraftmods.BellyOfTheBeast.entity (#8705)
  - 41.0.11  Fix readAdditionalLevelSaveData (#8704)
  - 41.0.10  Fixes setPos to syncPacketPositionCodec (#8702)
  - 41.0.9   Fix wrong param passed to PlayLevelSoundEvent.AtEntity (#8688)

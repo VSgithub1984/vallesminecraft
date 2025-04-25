@@ -1,4 +1,4 @@
-package vallesminecraftmods.belly_of_the_beast.client.model;
+package vallesminecraftmods.belly_of_the_beast.entity.client.model;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -12,9 +12,11 @@ import net.minecraft.client.model.geom.builders.MeshDefinition;
 import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth; // Für Mth.clamp etc.
+
+
 import vallesminecraftmods.belly_of_the_beast.BellyOfTheBeast;
-import vallesminecraftmods.belly_of_the_beast.client.animation.SunkenSailorAnimations; // Importiere deine Animationsklasse
-import Entity.custom.SunkenSailorEntity;
+import vallesminecraftmods.belly_of_the_beast.entity.client.animation.SunkenSailorAnimations; // Importiere deine Animationsklasse
+import vallesminecraftmods.belly_of_the_beast.entity.SunkenSailorEntity;
 
 public class SunkenSailorModel extends HierarchicalModel<SunkenSailorEntity> { // Geändert!
 
@@ -34,7 +36,7 @@ public class SunkenSailorModel extends HierarchicalModel<SunkenSailorEntity> { /
     }
 
     // !!! WICHTIG: DIESE METHODE MUSS DEINE MODELLSTRUKTUR ENTHALTEN !!!
-    // !!! Exportiere sie aus Blockbench (Modded Entity -> Forge -> Layer Definition) !!!
+    // !!! Exportiere sie aus Blockbench (Modded vallesminecraftmods.vallesminecraftmods.BellyOfTheBeast.entity -> Forge -> Layer Definition) !!!
     public static LayerDefinition createBodyLayer() {
         MeshDefinition meshdefinition = new MeshDefinition();
         PartDefinition partdefinition = meshdefinition.getRoot();

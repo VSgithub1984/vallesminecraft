@@ -11,7 +11,9 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import vallesminecraftmods.belly_of_the_beast.BellyOfTheBeast;
-import Entity.custom.SunkenSailorEntity;
+import vallesminecraftmods.belly_of_the_beast.BellyOfTheBeast;
+import vallesminecraftmods.belly_of_the_beast.entity.SkeletonfishprojectileEntity;
+import vallesminecraftmods.belly_of_the_beast.entity.SunkenSailorEntity;
 
 public class EntityInit {
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
@@ -39,4 +41,12 @@ public class EntityInit {
                 Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                 Monster::checkMonsterSpawnRules); // Standard Monster Spawn Rules in Wasser
     }
+    public static final RegistryObject<EntityType<SkeletonfishprojectileEntity>> SKELETONFISH_PROJECTILE =
+            ENTITY_TYPES.register("skeletonfish_projectile", // Registry-Name
+                    () -> EntityType.Builder.<SkeletonfishprojectileEntity>of(SkeletonfishprojectileEntity::new, MobCategory.MISC) // Kategorie MISC für Projektile
+                            .sized(0.5F, 0.5F) // Kleine Hitbox für Pfeile
+                            .clientTrackingRange(4) // Geringere Tracking Range oft ausreichend
+                            .updateInterval(10) // Update-Intervall (Standard für Pfeile ist 20, 10 ist auch ok)
+                            .build(new ResourceLocation(BellyOfTheBeast.MODID, "skeletonfish_projectile").toString())
+            );
 }
