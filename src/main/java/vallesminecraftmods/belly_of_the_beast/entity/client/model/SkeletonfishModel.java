@@ -17,7 +17,7 @@ import vallesminecraftmods.belly_of_the_beast.entity.SkeletonfishprojectileEntit
 public class SkeletonfishModel extends HierarchicalModel<SkeletonfishprojectileEntity> {
 
     public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(
-            new ResourceLocation(BellyOfTheBeast.MODID, "entity.client.model.SkeletonfishModel"), "main"); // Eigener Name für Layer
+            new ResourceLocation(BellyOfTheBeast.MODID, "skeletonfishmodel"), "main"); // Eigener Name für Layer
 
     private final ModelPart root;
     // Füge hier ggf. Teile hinzu, die animiert werden sollen (z.B. Flossen?)

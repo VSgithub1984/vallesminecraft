@@ -29,24 +29,21 @@ public class ClientModEvents {
     public static void registerRenderers(final EntityRenderersEvent.RegisterRenderers event) {
         event.registerEntityRenderer(EntityInit.SUNKEN_SAILOR.get(), SunkenSailorRenderer::new);
         // Renderer für das Projektil hinzufügen:
-        event.registerEntityRenderer(EntityInit.SKELETONFISH_PROJECTILE.get(),
+        event.registerEntityRenderer(EntityInit.SKELETONFISH_PROJECTILE.get(),SkeletonfishProjectileRenderer::new);
                 // Verwende ArrowRenderer, wenn es wie ein Pfeil aussehen soll (braucht Pfeil-Textur!)
                 // oder einen benutzerdefinierten Renderer, wenn es anders aussehen soll.
-                context -> new SkeletonfishProjectileRenderer(context) {
-                    @Override
-                    public ResourceLocation getTextureLocation(SkeletonfishprojectileEntity skeletonfishprojectileEntity) {
-                        return null;
+
                     }
-                } // Beispiel: Standardpfeil-Textur
+                // Beispiel: Standardpfeil-Textur
                 // ODER wenn es ein Item (z.B. Knochenfisch?) rendern soll:
                 // context -> new net.minecraft.client.renderer.entity.ThrownItemRenderer<>(context) // Braucht dann ein Item
-        );
-    }
+
+
     // Diese Methode ist notwendig, um die Modelldefinition (Knochen/Würfel) zu registrieren
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(vallesminecraftmods.belly_of_the_beast.entity.client.model.SunkenSailorModel.LAYER_LOCATION, vallesminecraftmods.belly_of_the_beast.entity.client.model.SunkenSailorModel::createBodyLayer);
-        event.registerLayerDefinition(vallesminecraftmods.belly_of_the_beast.entity.client.model.SkeletonfishModel.LAYER_LOCATION, SkeletonfishModel::createBodyLayer);
+        event.registerLayerDefinition(vallesminecraftmods.belly_of_the_beast.entity.client.model.SkeletonfishModel.LAYER_LOCATION, vallesminecraftmods.belly_of_the_beast.entity.client.model.SkeletonfishModel::createBodyLayer);
     }
 
 }
