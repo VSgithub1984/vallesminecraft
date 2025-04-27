@@ -35,6 +35,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.pathfinder.BlockPathTypes;
+import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkHooks;
 // Stelle sicher, dass diese Imports korrekt auf dein Projekt verweisen
@@ -137,6 +138,7 @@ public class SunkenSailorEntity extends Monster {
     protected void registerGoals() {
         super.registerGoals();
         this.goalSelector.addGoal(0, new EntityAICirclePlayer(this));
+        this.goalSelector.addGoal(1, new RandomWaterAreaGoal(this, 0.6D, 10));
         this.goalSelector.addGoal(2, new RandomStrollGoal(this, 0.4D) {
             // ... (Implementierung von RandomStrollGoal wie zuvor) ...
             @Override
@@ -272,28 +274,29 @@ public class SunkenSailorEntity extends Monster {
             }
 
             // Water Positioning
+            // Water Positioning
             if (this.isInWaterOrBubble()) {
                 double waterSurfaceY = getWaterSurfaceY(this.getX(), this.getZ());
-                double targetY = waterSurfaceY - 0.5;
+                double targetY = waterSurfaceY - 0.5; // Ziel leicht unterhalb der Oberfläche
                 Vec3 currentDelta = this.getDeltaMovement();
-                double dy;
-                boolean nearTarget = !this.getNavigation().isInProgress() || (this.getNavigation().getTargetPos() != null && this.position().distanceToSqr(this.getNavigation().getTargetPos().getCenter()) < 4.0);
+                double dy = 0.0; // Standard: keine erzwungene Y-Änderung
 
-                if (nearTarget) {
-                    dy = Mth.clamp((targetY - this.getY()) * 0.1, -0.2, 0.2);
-                } else {
-                    dy = Mth.clamp((targetY - this.getY()) * 0.15, -0.3, 0.3);
+                // Wende nur eine sanfte Korrektur an, wenn die Navigation NICHT aktiv versucht,
+                // die Y-Achse signifikant zu ändern ODER wenn die Navigation fertig/inaktiv ist.
+                // Reduziere die Aggressivität der Korrektur.
+                boolean navigationIdle = !this.getNavigation().isInProgress() || this.getNavigation().isDone();
+                boolean targetNearby;
+                targetNearby = this.getNavigation().getTargetPos() != null && Math.abs(this.getNavigation().getTargetPos().getY() - this.getY()) < 0.5;
+
+                if (navigationIdle || targetNearby) {
+                    dy = Mth.clamp((targetY - this.getY()) * 0.05, -0.05, 0.05); // VIEL sanftere Anpassung
                 }
 
-                if (Math.abs(currentDelta.y) < 0.3) {
-                    this.setDeltaMovement(currentDelta.x, currentDelta.y + dy, currentDelta.z);
-                } else {
-                    this.setDeltaMovement(currentDelta.x, currentDelta.y * 0.9 + dy * 0.1, currentDelta.z);
-                }
-            } else {
-                // Gravity outside water
-                if (!this.onGround() && !this.isNoGravity()) { // Prüfe isNoGravity()
-                    // Verwende die korrekte Methode für Gravitation
+                // Wende leichtes Dämpfen und die sanfte Anpassung an
+                this.setDeltaMovement(currentDelta.x * 0.98, currentDelta.y * 0.95 + dy, currentDelta.z * 0.98);
+
+            } else { // Schwerkraft außerhalb des Wassers (Logik bleibt)
+                if (!this.onGround() && !this.isNoGravity()) {
                     this.setDeltaMovement(this.getDeltaMovement().add(0.0D, -this.getGravity(), 0.0D));
                 }
             }
@@ -563,67 +566,74 @@ public class SunkenSailorEntity extends Monster {
             this.moveTargetPos = Vec3.ZERO;
         }
 
+
         @Override
         public void tick() {
             if (targetPlayer == null || !targetPlayer.isAlive()) {
                 return; // Abbruch, wenn Ziel ungültig
             }
 
-            // Schauen zum Spieler
             entity.getLookControl().setLookAt(targetPlayer, 30.0F, 30.0F);
 
-            // Prüfen, ob feststeckt
-            if (entity.position().distanceToSqr(this.lastPos) < 0.03 * 0.03 && entity.getNavigation().isDone()) { // Toleranz erhöhen
+            // Prüfen, ob feststeckt (Logik bleibt, aber Fallback wird verbessert)
+            if (entity.position().distanceToSqr(this.lastPos) < 0.03 * 0.03 && entity.getNavigation().isDone()) {
                 stuckTicks++;
             } else {
                 stuckTicks = 0;
             }
             this.lastPos = entity.position();
 
-            // Wenn zu lange feststeckt, versuche direkt zum Spieler zu schwimmen oder Position neu zu berechnen
+            // Wenn zu lange feststeckt -> Verbesserter Fallback
             if (stuckTicks > 60) {
-                Vec3 directionToPlayer = targetPlayer.position().subtract(entity.position()).normalize();
-                Vec3 randomNearbyPos = entity.position().add(directionToPlayer.scale(5.0)); // Ein Stück Richtung Spieler
-                double targetY = entity.getWaterSurfaceY(randomNearbyPos.x, randomNearbyPos.z);
-                entity.getNavigation().moveTo(randomNearbyPos.x, targetY -0.5, randomNearbyPos.z, 1.0D); // Neues Ziel setzen
-                stuckTicks = 0; // Timer zurücksetzen
-                this.tryingToReachWater = true; // Markieren, dass wir versuchen, eine Position zu erreichen
-                if (DEBUG_VANILLA_ANIMATIONS) System.out.println("Entity stuck, moving towards player.");
-                return; // Nächsten Tick abwarten
+                double playerWaterY = entity.getWaterSurfaceY(targetPlayer.getX(), targetPlayer.getZ());
+                Vec3 targetPos;
+                if (playerWaterY > entity.level().getMinBuildHeight()) {
+                    targetPos = new Vec3(targetPlayer.getX(), playerWaterY - 0.5, targetPlayer.getZ());
+                    if (DEBUG_VANILLA_ANIMATIONS)
+                        System.out.println("Entity stuck, trying to move towards player's water position: " + targetPos);
+                } else {
+                    if (entity.spawnPos != null) {
+                        double spawnWaterY = entity.getWaterSurfaceY(entity.spawnPos.getX() + 0.5, entity.spawnPos.getZ() + 0.5);
+                        targetPos = new Vec3(entity.spawnPos.getX() + 0.5, spawnWaterY > entity.level().getMinBuildHeight() ? spawnWaterY - 0.5 : entity.getY(), entity.spawnPos.getZ() + 0.5);
+                        if (DEBUG_VANILLA_ANIMATIONS)
+                            System.out.println("Entity stuck, cannot find player water pos, trying to move towards spawn water pos: " + targetPos);
+                    } else {
+                        targetPos = entity.position().add(entity.getLookAngle().scale(2.0));
+                        if (DEBUG_VANILLA_ANIMATIONS)
+                            System.out.println("Entity stuck, no player water or spawn pos, moving in look direction.");
+                    }
+                }
+                entity.getNavigation().moveTo(targetPos.x, targetPos.y, targetPos.z, 1.0D); // Höhere Geschwindigkeit zum Befreien
+                stuckTicks = 0;
+                this.tryingToReachWater = true; // Markieren, dass wir repositionieren
+                return;
             }
 
-            // Wenn wir gerade versuchen, aus einer Stuck-Situation zu kommen
+            // Wenn wir versuchen, aus Stuck-Situation zu kommen
             if (tryingToReachWater) {
-                if (entity.getNavigation().isDone()) {
-                    tryingToReachWater = false; // Ziel erreicht, normales Verhalten fortsetzen
+                if (entity.getNavigation().isDone() || !entity.getNavigation().isInProgress()) { // Prüfe auch !isInProgress
+                    tryingToReachWater = false;
                 } else {
-                    entity.setMoving(entity.getNavigation().isInProgress()); // Bewegungsstatus aktualisieren
-                    return; // Warten, bis Ziel erreicht
+                    entity.setMoving(true); // Sicherstellen, dass Animation läuft
+                    return; // Warten
                 }
             }
 
-            // Angriffslogik
+            // Angriffslogik (bleibt gleich)
             if (attackCooldown > 0) attackCooldown--;
             checkCanAttackTimer--;
-
             if (checkCanAttackTimer <= 0 && attackCooldown <= 0) {
-                checkCanAttackTimer = CHECK_ATTACK_RATE; // Timer zurücksetzen
-                double distanceSq = entity.distanceToSqr(targetPlayer);
-                // Prüfe Distanz UND Sichtlinie
-                if (distanceSq < attackRangeSq && entity.hasLineOfSight(targetPlayer)) {
-                    entity.performRangedAttack(targetPlayer); // Angriff ausführen
-                    // Cooldown neu setzen nach erfolgreichem Angriff
+                // ... (Rest der Angriffslogik bleibt) ...
+                if (entity.distanceToSqr(targetPlayer) < attackRangeSq && entity.hasLineOfSight(targetPlayer)) {
+                    entity.performRangedAttack(targetPlayer);
                     this.attackCooldown = MIN_ATTACK_INTERVAL + entity.getRandom().nextInt(MAX_ATTACK_INTERVAL - MIN_ATTACK_INTERVAL + 1);
-                    // Wichtig: Das Goal wird durch canContinueToUse() gestoppt, da isRangedAttacking jetzt true ist
-                    return; // Beende Tick-Verarbeitung für dieses Goal, da Angriff gestartet wurde
+                    return;
                 }
             }
 
-            // Bewegungslogik (Halbkreis vor dem Spieler)
-            double angleIncrement = 0.04 * circleDirection; // Geschwindigkeit der Kreisbewegung
+            // --- Bewegungslogik (Halbkreis) ---
+            double angleIncrement = 0.04 * circleDirection;
             currentAngle += angleIncrement;
-
-            // Richtung umkehren, wenn Enden des Halbkreises erreicht sind
             if (currentAngle > Math.PI) {
                 currentAngle = Math.PI;
                 circleDirection = -1;
@@ -632,47 +642,83 @@ public class SunkenSailorEntity extends Monster {
                 circleDirection = 1;
             }
 
-            // Berechne Zielposition im Halbkreis VOR dem Spieler
-            double desiredDistance = circleRadius; // Abstand zum Spieler beibehalten
-            // Vektor vom Spieler weg, basierend auf Spielerblickrichtung (vereinfacht)
-            Vec3 playerLook = Vec3.directionFromRotation(targetPlayer.getXRot(), targetPlayer.getYRot());
-            // Position VOR dem Spieler als Zentrum des Halbkreises
-            Vec3 circleCenter = targetPlayer.position().add(playerLook.scale(-desiredDistance * 0.5)); // Etwas näher dran als der Radius
+            double desiredDistance = circleRadius;
+            // ===> KREISZENTRUM ÄNDERN: <===
+            // Vec3 playerLook = Vec3.directionFromRotation(targetPlayer.getXRot(), targetPlayer.getYRot()); // ALT
+            // Vec3 circleCenter = targetPlayer.position().add(playerLook.scale(-desiredDistance * 0.5)); // ALT
+            Vec3 circleCenter = targetPlayer.position(); // NEU: Zentrum ist Spieler X/Z
 
-            // Berechne Position auf dem Halbkreis
-            double targetX = circleCenter.x + Mth.cos((float)currentAngle) * desiredDistance;
-            double targetZ = circleCenter.z + Mth.sin((float)currentAngle) * desiredDistance;
-            double targetY = entity.getWaterSurfaceY(targetX, targetZ); // Zielhöhe an Wasseroberfläche anpassen
+            double targetX = circleCenter.x + Mth.cos((float) currentAngle) * desiredDistance;
+            double targetZ = circleCenter.z + Mth.sin((float) currentAngle) * desiredDistance;
+            double targetY = entity.getWaterSurfaceY(targetX, targetZ);
 
-            Vec3 idealTargetPos = new Vec3(targetX, targetY - 0.5, targetZ); // Leicht untertauchen
+            Vec3 idealTargetPos = Vec3.ZERO; // Initialisieren
 
-            // Stelle sicher, dass das Ziel im Wasser liegt
-            BlockPos targetBlockPos = BlockPos.containing(idealTargetPos);
-            if (!entity.level().getFluidState(targetBlockPos).is(FluidTags.WATER)) {
-                // Wenn Ziel nicht im Wasser, versuche näher am Spieler zu bleiben
-                Vec3 directionToPlayer = entity.position().subtract(targetPlayer.position()).normalize(); // Vektor zum Spieler
-                idealTargetPos = targetPlayer.position().add(directionToPlayer.scale(desiredDistance * 0.8)); // Etwas näher
-                targetY = entity.getWaterSurfaceY(idealTargetPos.x, idealTargetPos.z);
-                idealTargetPos = new Vec3(idealTargetPos.x, targetY - 0.5, idealTargetPos.z);
-
-                // Erneuter Wassercheck für die neue Position
-                targetBlockPos = BlockPos.containing(idealTargetPos);
-                if (!entity.level().getFluidState(targetBlockPos).is(FluidTags.WATER)) {
-                    // Wenn immer noch kein Wasser, stoppe Bewegung vorerst? Oder suche Wasser?
-                    // Hier: Stoppe Navigation für diesen Tick
+            // Prüfen, ob Wasseroberfläche gefunden wurde
+            if (targetY <= entity.level().getMinBuildHeight()) {
+                // Keine Wasseroberfläche gefunden, versuche direkt zur Spieler-Wasserposition
+                targetY = entity.getWaterSurfaceY(targetPlayer.getX(), targetPlayer.getZ());
+                if (targetY > entity.level().getMinBuildHeight()) {
+                    idealTargetPos = new Vec3(targetPlayer.getX(), targetY - 0.5, targetPlayer.getZ());
+                    if (DEBUG_VANILLA_ANIMATIONS)
+                        System.out.println("Circle Goal: Target Y failed, using player water Y: " + idealTargetPos);
+                } else {
+                    // Spieler auch nicht über Wasser, Bewegung stoppen für diesen Tick
+                    if (DEBUG_VANILLA_ANIMATIONS)
+                        System.out.println("Circle Goal: Target Y and Player water Y failed, stopping.");
                     entity.getNavigation().stop();
-                    tryingToReachWater = true; // Markieren, dass wir Wasser suchen
-                    if (DEBUG_VANILLA_ANIMATIONS) System.out.println("Target position not in water, stopping.");
+                    entity.setMoving(false);
+                    stuckTicks += 5; // Schneller als "stuck" markieren
                     return;
                 }
+            } else {
+                idealTargetPos = new Vec3(targetX, targetY - 0.5, targetZ); // Reguläres Ziel
             }
+
+            // Stelle sicher, dass das Ziel (idealTargetPos) im Wasser und erreichbar ist
+            BlockPos targetBlockPos = BlockPos.containing(idealTargetPos);
+            boolean targetIsWater = entity.level().getFluidState(targetBlockPos).is(FluidTags.WATER) &&
+                    entity.level().getBlockState(targetBlockPos).isPathfindable(entity.level(), targetBlockPos, PathComputationType.WATER);
+
+            if (!targetIsWater) {
+                // Wenn Ziel nicht im Wasser/erreichbar ist, versuche NICHT sofort zum Spieler zu springen,
+                // sondern überspringe einfach die Navigation für diesen Tick und hoffe, der nächste Kreispunkt ist besser.
+                // Das verhindert zu häufiges Stoppen/Zurückspringen.
+                if (DEBUG_VANILLA_ANIMATIONS)
+                    System.out.println("Circle Goal: Calculated ideal target " + idealTargetPos + " is not valid water/pathable. Skipping move.");
+                entity.setMoving(false); // Nicht bewegen, wenn kein gültiges Ziel
+                // Optional: stuckTicks leicht erhöhen, damit es nicht ewig an einer Land-Kante hängen bleibt?
+                // stuckTicks += 1;
+                return; // Nächsten Tick abwarten
+            }
+
+            // Aktualisiere Navigation nur periodisch oder wenn Ziel weit weg
+            if (entity.tickCount % 10 == 0 || moveTargetPos.distanceToSqr(idealTargetPos) > 2.0 * 2.0) {
+                // Prüfe Pfad vor dem Bewegen (optional, aber sicherer)
+                // net.minecraft.world.level.pathfinder.Path path = entity.getNavigation().createPath(targetBlockPos, 0);
+                // if (path != null && !path.isDone()) {
+                this.moveTargetPos = idealTargetPos;
+                entity.getNavigation().moveTo(idealTargetPos.x, idealTargetPos.y, idealTargetPos.z, 1.0D); // Normale Geschwindigkeit
+                // entity.getNavigation().moveTo(path, 1.0D); // Alternative mit Path
+                if (DEBUG_VANILLA_ANIMATIONS && entity.tickCount % 40 == 0)
+                    System.out.println("Circle Goal: Updating navigation target.");
+                // } else {
+                //    if (DEBUG_VANILLA_ANIMATIONS && entity.tickCount % 40 == 0) System.out.println("Circle Goal: Cannot create path to target " + idealTargetPos);
+                //    stuckTicks += 5; // Pfad ungültig -> als stuck behandeln
+                //    entity.setMoving(false);
+                // }
+            }
+
+            // Update moving state basierend auf tatsächlicher Bewegung
+            entity.setMoving(entity.getNavigation().isInProgress() && !entity.getNavigation().isDone());
 
 
             // Aktualisiere Navigation nur periodisch oder wenn das Ziel weit weg ist
             if (entity.tickCount % 10 == 0 || moveTargetPos.distanceToSqr(idealTargetPos) > 2.0 * 2.0) {
                 this.moveTargetPos = idealTargetPos;
                 entity.getNavigation().moveTo(idealTargetPos.x, idealTargetPos.y, idealTargetPos.z, 1.0D); // Bewegungsgeschwindigkeit anpassen?
-                if (DEBUG_VANILLA_ANIMATIONS && entity.tickCount % 40 == 0) System.out.println("Updating navigation target."); // Seltener loggen
+                if (DEBUG_VANILLA_ANIMATIONS && entity.tickCount % 40 == 0)
+                    System.out.println("Updating navigation target."); // Seltener loggen
             }
 
             // Update moving state basierend auf tatsächlicher Bewegung
@@ -685,5 +731,116 @@ public class SunkenSailorEntity extends Monster {
     protected double getGravity() {
         // Standard-Schwerkraft, kann überschrieben werden, wenn die Entität leichter/schwerer sein soll
         return 0.08D; // Vanilla default für die meisten Entities
+    }
+    public class RandomWaterAreaGoal extends Goal {
+        private final SunkenSailorEntity mob;
+        private final double speedModifier;
+        private final int maxDist; // Max X/Z-Abstand vom spawnPos
+        private double wantedX;
+        private double wantedY;
+        private double wantedZ;
+        // Reduziere die Startverzögerung und das Intervall, damit es häufiger versucht
+        private int interval = 60 + mob.getRandom().nextInt(60); // 3-6 Sekunden
+
+        public RandomWaterAreaGoal(SunkenSailorEntity mob, double speedModifier, int maxDist) {
+            this.mob = mob;
+            this.speedModifier = speedModifier;
+            this.maxDist = maxDist; // Dies ist der Radius (10 für 10x10 wäre eher 5?) - Verwende es als max X/Z-Abstand
+            this.setFlags(EnumSet.of(Goal.Flag.MOVE));
+        }
+
+        @Override
+        public boolean canUse() {
+            // Nur verwenden, wenn NICHT gekämpft wird, SPAWNPOS existiert und
+            // die Navigation fertig ist ODER eine gewisse Zeit abgelaufen ist.
+            if (this.mob.getTarget() != null || this.mob.spawnPos == null || this.mob.isRangedAttacking) {
+                return false;
+            }
+
+            // Versuche nur, wenn nicht schon unterwegs oder nach Ablauf des Intervalls
+            if (!this.mob.getNavigation().isDone() && this.mob.isMoving()) {
+                // Wenn schon unterwegs zu einem Idle-Ziel, nicht sofort neu suchen
+                return false;
+            }
+
+            if (--this.interval <= 0) {
+                this.interval = 80 + this.mob.getRandom().nextInt(80); // Intervall zurücksetzen (4-8 Sek)
+                Vec3 targetPos = this.findRandomWaterPosition();
+                if (targetPos != null) {
+                    this.wantedX = targetPos.x;
+                    this.wantedY = targetPos.y;
+                    this.wantedZ = targetPos.z;
+                    // Debug-Ausgabe entfernt, um Konsole sauber zu halten
+                    // if (SunkenSailorEntity.DEBUG_VANILLA_ANIMATIONS) System.out.println("Idle Goal: Found new water target: " + targetPos);
+                    return true; // Gültiges Ziel gefunden
+                }
+                // Wenn kein Ziel gefunden wurde, warte länger, bevor erneut gesucht wird
+                this.interval = 120 + this.mob.getRandom().nextInt(100);
+            }
+
+            return false; // Kein neues Ziel benötigt oder gefunden
+        }
+
+        @Override
+        public boolean canContinueToUse() {
+            // Weiterlaufen, solange Navigation aktiv ist UND kein Ziel/Angriff da ist
+            return !this.mob.getNavigation().isDone() && this.mob.getTarget() == null && !this.mob.isRangedAttacking;
+        }
+
+        @Override
+        public void start() {
+            // Bewege zum Ziel
+            this.mob.getNavigation().moveTo(this.wantedX, this.wantedY, this.wantedZ, this.speedModifier);
+            this.mob.setMoving(true); // Animation starten
+            // if (SunkenSailorEntity.DEBUG_VANILLA_ANIMATIONS) System.out.println("Idle Goal: Starting navigation.");
+        }
+
+        @Override
+        public void stop() {
+            // Navigation stoppen und Animation beenden
+            this.mob.getNavigation().stop();
+            this.mob.setMoving(false);
+            // if (SunkenSailorEntity.DEBUG_VANILLA_ANIMATIONS) System.out.println("Idle Goal: Stopping navigation.");
+            // Kurzes Intervall, falls sofort wieder canUse geprüft wird
+            this.interval = 20;
+        }
+
+        @Override
+        public void tick() {
+            // Sicherstellen, dass der Moving-Status korrekt ist, falls die Navigation abbricht
+            this.mob.setMoving(!this.mob.getNavigation().isDone());
+        }
+
+
+        private Vec3 findRandomWaterPosition() {
+            if (this.mob.spawnPos == null) return null;
+
+            for (int i = 0; i < 15; ++i) { // Mehr Versuche
+                // Zufällige X/Z-Position innerhalb des maxDist-Bereichs um spawnPos
+                double targetX = this.mob.spawnPos.getX() + (this.mob.getRandom().nextDouble() * 2.0D - 1.0D) * this.maxDist;
+                double targetZ = this.mob.spawnPos.getZ() + (this.mob.getRandom().nextDouble() * 2.0D - 1.0D) * this.maxDist;
+
+                // Finde Wasseroberfläche an dieser Position
+                double targetY = this.mob.getWaterSurfaceY(targetX, targetZ);
+
+                // Prüfe, ob eine gültige Wasseroberfläche gefunden wurde
+                if (targetY > this.mob.level().getMinBuildHeight()) {
+                    Vec3 potentialTarget = new Vec3(targetX, targetY - 0.5, targetZ); // Leicht unterhalb der Oberfläche
+                    BlockPos checkPos = BlockPos.containing(potentialTarget);
+
+                    // Prüfe, ob der Block Wasser ist UND für Wasser-Pathfinding geeignet ist
+                    if (this.mob.level().getFluidState(checkPos).is(FluidTags.WATER) &&
+                            this.mob.level().getBlockState(checkPos).isPathfindable(this.mob.level(), checkPos, PathComputationType.WATER))
+                    {
+                        // Zusätzlicher Check: Ist die Position zu nah an der aktuellen?
+                        if (this.mob.position().distanceToSqr(potentialTarget) > 3.0 * 3.0) { // Nur wenn weiter als 3 Blöcke weg
+                            return potentialTarget;
+                        }
+                    }
+                }
+            }
+            // if (SunkenSailorEntity.DEBUG_VANILLA_ANIMATIONS) System.out.println("Idle Goal: Failed to find random water position after 15 tries.");
+            return null; // Kein geeignetes Ziel gefunden
+        }
     }
 } // Ende SunkenSailorEntity
