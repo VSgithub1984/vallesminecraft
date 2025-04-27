@@ -11,6 +11,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import vallesminecraftmods.belly_of_the_beast.BellyOfTheBeast;
 import vallesminecraftmods.belly_of_the_beast.entity.SkeletonfishprojectileEntity;
+import vallesminecraftmods.belly_of_the_beast.entity.client.model.SkeletonfishModel;
 import vallesminecraftmods.belly_of_the_beast.entity.client.renderer.SkeletonfishProjectileRenderer;
 import vallesminecraftmods.belly_of_the_beast.entity.client.renderer.SunkenSailorRenderer; // Importieren
 import vallesminecraftmods.belly_of_the_beast.init.EntityInit;
@@ -45,6 +46,7 @@ public class ClientModEvents {
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(vallesminecraftmods.belly_of_the_beast.entity.client.model.SunkenSailorModel.LAYER_LOCATION, vallesminecraftmods.belly_of_the_beast.entity.client.model.SunkenSailorModel::createBodyLayer);
+        event.registerLayerDefinition(vallesminecraftmods.belly_of_the_beast.entity.client.model.SkeletonfishModel.LAYER_LOCATION, SkeletonfishModel::createBodyLayer);
     }
 
 }

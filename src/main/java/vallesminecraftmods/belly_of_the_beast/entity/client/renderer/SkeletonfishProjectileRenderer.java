@@ -16,7 +16,7 @@ import vallesminecraftmods.belly_of_the_beast.entity.SkeletonfishprojectileEntit
 
 public class SkeletonfishProjectileRenderer extends EntityRenderer<SkeletonfishprojectileEntity> {
 
-    private static final ResourceLocation TEXTURE_LOCATION = new ResourceLocation(BellyOfTheBeast.MODID, "resources/assets/belly_of_the_beast/projectiles/textures/bonefish.png"); // Pfad zur Textur anpassen!
+    private static final ResourceLocation TEXTURE_LOCATION = new ResourceLocation(BellyOfTheBeast.MODID, "projectiles/textures/bonefish.png"); // Pfad zur Textur anpassen!
     private final SkeletonfishModel model;
 
     public SkeletonfishProjectileRenderer(EntityRendererProvider.Context context) {

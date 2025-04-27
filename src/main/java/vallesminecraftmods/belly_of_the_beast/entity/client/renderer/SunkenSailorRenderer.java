@@ -9,12 +9,13 @@ import vallesminecraftmods.belly_of_the_beast.BellyOfTheBeast;
 import vallesminecraftmods.belly_of_the_beast.entity.SunkenSailorEntity; // Passe Pfad ggf. an
 import vallesminecraftmods.belly_of_the_beast.entity.client.model.SunkenSailorModel;   // Passe Pfad ggf. an
 
+
 // Verwende die importierten Klassen in den Generics
 public class SunkenSailorRenderer extends MobRenderer<SunkenSailorEntity, SunkenSailorModel> {
 
     // Korrigierter Pfad: textures/entity/... relativ zu assets/belly_of_the_beast/
     private static final ResourceLocation TEXTURE_LOCATION =
-            new ResourceLocation(BellyOfTheBeast.MODID, "textures/entity/piratebosstemp.png");
+            new ResourceLocation(BellyOfTheBeast.MODID, "/textures/piratebosstemp.png");
 
     // Korrekter Konstruktor mit EntityRendererProvider.Context
     public SunkenSailorRenderer(EntityRendererProvider.Context context) {
