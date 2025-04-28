@@ -16,7 +16,7 @@ import vallesminecraftmods.belly_of_the_beast.init.ItemInit; // Erstellen wir gl
 
 @Mod(BellyOfTheBeast.MODID)
 public class BellyOfTheBeast {
-    public static final String MODID = "belly_of_the_beast";
+    public static final String MODID = "assets/belly_of_the_beast";
     private static final Logger LOGGER = LogUtils.getLogger();
 
 
